@@ -14,10 +14,24 @@
   "contributes": {
     "commands": [
       {
-        "command": "snippetizer.helloWorld",
-        "title": "Hello World"
+        "command": "snippetizer.createSnippet",
+        "title": "Create Snippet"
       }
-    ]
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "snippetizer.createSnippet",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "snippetizer.createSnippet",
+          "group": "modification"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
