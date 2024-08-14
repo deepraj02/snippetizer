@@ -1,13 +1,20 @@
 {
   "name": "snippetizer",
-  "displayName": "snippetizer",
-  "description": "",
-  "version": "0.0.1",
+  "displayName": "Snippetizer",
+  "description": "A VS Code extension that helps you add and manage large snippets with ease.",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.91.0"
   },
   "categories": [
     "Other"
+  ],
+  "keywords": [
+    "snippet",
+    "snippets",
+    "code",
+    "extension",
+    "add snippets"
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",
@@ -33,6 +40,20 @@
       ]
     }
   },
+  "icon": "assets/icon.png",
+  "repository": {
+    "type": "git",
+    "url": " https://github.com/deepraj02/snippetizer"
+  },
+  "author": "Deepraj Baidya <https://github.com/deepraj02> (https://github.com/deepraj02)",
+  "license": "MIT",
+  "bugs": {
+    "url": " https://github.com/deepraj02/snippetizer/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=fix%3A+"
+  },
+  "homepage": " https://github.com/deepraj02/snippetizer#readme",
+
+
+
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "webpack",
