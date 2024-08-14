@@ -39,12 +39,46 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 var vscode = require("vscode");
-var fs = require("fs");
-var path = require("path");
+var showSnippetsFiles_1 = require("./helpers/showSnippetsFiles");
+var saveSnippet_1 = require("./helpers/saveSnippet");
 function activate(context) {
     var _this = this;
     var disposable = vscode.commands.registerCommand('snippetizer.createSnippet', function () { return __awaiter(_this, void 0, void 0, function () {
-        var editor, selection, text, snippetName, snippetDesc, snippetAlias;
+        // const snippetName = await vscode.window.showInputBox({ prompt: 'Enter snippet name' });
+        // if (!snippetName) {
+        //   vscode.window.showErrorMessage('Snippet name is required!');
+        //   return snippetName;
+        // }
+        // const snippetDesc = await vscode.window.showInputBox({ prompt: 'Enter snippet description' });
+        // if (!snippetDesc) {
+        //   vscode.window.showErrorMessage('Snippet description is required!');
+        //   return snippetDesc;
+        // }
+        // const snippetAlias = await vscode.window.showInputBox({ prompt: 'Enter snippet alias (prefix)' });
+        // if (!snippetAlias) {
+        //   vscode.window.showErrorMessage('Snippet alias is required!');
+        //   return snippetAlias;
+        // }
+        function getInput(prompt, errorMessage) {
+            return __awaiter(this, void 0, void 0, function () {
+                var input;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            if (!!input) return [3 /*break*/, 2];
+                            return [4 /*yield*/, vscode.window.showInputBox({ prompt: prompt })];
+                        case 1:
+                            input = _a.sent();
+                            if (!input) {
+                                vscode.window.showErrorMessage(errorMessage);
+                            }
+                            return [3 /*break*/, 0];
+                        case 2: return [2 /*return*/, input];
+                    }
+                });
+            });
+        }
+        var editor, selection, text, snippetName, snippetDesc, snippetAlias, selectedFile, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -59,58 +93,37 @@ function activate(context) {
                         vscode.window.showErrorMessage('No text selected!');
                         return [2 /*return*/];
                     }
-                    return [4 /*yield*/, vscode.window.showInputBox({ prompt: 'Enter snippet name' })];
+                    return [4 /*yield*/, getInput('Enter snippet name', 'Snippet name is required!')];
                 case 1:
                     snippetName = _a.sent();
-                    return [4 /*yield*/, vscode.window.showInputBox({ prompt: 'Enter snippet description' })];
+                    return [4 /*yield*/, getInput('Enter snippet description', 'Snippet description is required!')];
                 case 2:
                     snippetDesc = _a.sent();
-                    return [4 /*yield*/, vscode.window.showInputBox({ prompt: 'Enter snippet alias (prefix)' })];
+                    return [4 /*yield*/, getInput('Enter snippet alias (prefix)', 'Snippet alias is required!')];
                 case 3:
                     snippetAlias = _a.sent();
-                    if (!(snippetName && snippetDesc && snippetAlias)) return [3 /*break*/, 5];
-                    return [4 /*yield*/, saveSnippet(editor.document.languageId, snippetName, snippetDesc, snippetAlias, text)];
+                    _a.label = 4;
                 case 4:
+                    _a.trys.push([4, 8, , 9]);
+                    return [4 /*yield*/, (0, showSnippetsFiles_1.showSnippetFiles)()];
+                case 5:
+                    selectedFile = _a.sent();
+                    if (!selectedFile) return [3 /*break*/, 7];
+                    return [4 /*yield*/, (0, saveSnippet_1.saveSnippet)(selectedFile, snippetName, snippetDesc, snippetAlias, text)];
+                case 6:
                     _a.sent();
                     vscode.window.showInformationMessage('Snippet added successfully!');
-                    _a.label = 5;
-                case 5: return [2 /*return*/];
+                    _a.label = 7;
+                case 7: return [3 /*break*/, 9];
+                case 8:
+                    error_1 = _a.sent();
+                    vscode.window.showErrorMessage("Failed to add snippet: ".concat(error_1.message));
+                    console.error('Error adding snippet:', error_1);
+                    return [3 /*break*/, 9];
+                case 9: return [2 /*return*/];
             }
         });
     }); });
     context.subscriptions.push(disposable);
-}
-function saveSnippet(languageId, name, description, alias, body) {
-    return __awaiter(this, void 0, void 0, function () {
-        var snippetsPath, snippets, data;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    snippetsPath = path.join(vscode.env.appRoot, 'snippets', "".concat(languageId, ".json"));
-                    snippets = {};
-                    if (!fs.existsSync(snippetsPath)) return [3 /*break*/, 2];
-                    return [4 /*yield*/, fs.promises.readFile(snippetsPath, 'utf8')];
-                case 1:
-                    data = _a.sent();
-                    snippets = JSON.parse(data);
-                    _a.label = 2;
-                case 2:
-                    snippets[name] = {
-                        prefix: alias,
-                        body: body.split('\n'),
-                        description: description
-                    };
-                    return [4 /*yield*/, fs.promises.writeFile(snippetsPath, JSON.stringify(snippets, null, 2))];
-                case 3:
-                    _a.sent();
-                    // Refresh snippets
-                    return [4 /*yield*/, vscode.commands.executeCommand('vscode.refreshSnippets')];
-                case 4:
-                    // Refresh snippets
-                    _a.sent();
-                    return [2 /*return*/];
-            }
-        });
-    });
 }
 function deactivate() { }
