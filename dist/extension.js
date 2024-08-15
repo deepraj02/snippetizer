@@ -49,17 +49,22 @@ function activate(context) {
             return;
         }
         const snippetName = await (0, getInput_1.getInput)('Enter snippet name', 'Snippet name is required!');
+        if (snippetName === null)
+            return;
         const snippetDesc = await (0, getInput_1.getInput)('Enter snippet description', 'Snippet description is required!');
+        if (snippetDesc === null)
+            return;
         const snippetAlias = await (0, getInput_1.getInput)('Enter snippet alias (prefix)', 'Snippet alias is required!');
+        if (snippetAlias === null)
+            return;
         try {
             const selectedFile = await (0, showSnippetsFiles_1.showSnippetFiles)();
             if (selectedFile) {
                 await (0, saveSnippet_1.saveSnippet)(selectedFile, snippetName, snippetDesc, snippetAlias, text);
-                vscode.window.showInformationMessage('Snippet added successfully!');
             }
         }
         catch (error) {
-            vscode.window.showErrorMessage(`Failed to add snippet: ${error.message}`);
+            vscode.window.showErrorMessage(`Failed to add snippet:`);
             console.error('Error adding snippet:', error);
         }
     });
@@ -234,28 +239,48 @@ exports.saveSnippet = saveSnippet;
 const vscode = __importStar(__webpack_require__(1));
 const fs = __importStar(__webpack_require__(3));
 async function saveSnippet(filePath, name, description, alias, body) {
-    let snippets = {};
+    let fileContent = '{}';
     if (fs.existsSync(filePath)) {
         try {
-            const data = await fs.promises.readFile(filePath, 'utf8');
-            snippets = JSON.parse(data);
+            fileContent = await fs.promises.readFile(filePath, 'utf8');
+            JSON.parse(fileContent);
         }
         catch (error) {
-            console.error('Error parsing existing snippets file:', error);
-            vscode.window.showWarningMessage(`Existing snippets file was invalid. Creating a new file.`);
+            console.error('Error reading or parsing existing snippets file:', error);
+            fileContent = '{}';
         }
     }
-    snippets[name] = {
-        prefix: alias,
-        body: body.split('\n'),
-        description: description
-    };
-    await fs.promises.writeFile(filePath, JSON.stringify(snippets, null, 2));
-    // Refresh snippets
-    await vscode.commands.executeCommand('vscode.refreshSnippets');
-    // Open the snippets file
-    const document = await vscode.workspace.openTextDocument(filePath);
-    await vscode.window.showTextDocument(document);
+    // Remove the closing brace if it exists
+    fileContent = fileContent.trim().replace(/}$/, '');
+    // Add a comma if the file is not empty
+    if (fileContent.length > 1) {
+        fileContent += ',';
+    }
+    // Append the new snippet
+    const newSnippet = `
+  "${name}": {
+    "prefix": "${alias}",
+    "body": ${JSON.stringify(body.split('\n'))},
+    "description": "${description}"
+  }
+}`;
+    fileContent += newSnippet;
+    try {
+        await fs.promises.writeFile(filePath, fileContent);
+        // Open the snippets file
+        const document = await vscode.workspace.openTextDocument(filePath);
+        await vscode.window.showTextDocument(document);
+        vscode.window.showInformationMessage('Snippet added successfully!');
+    }
+    catch (error) {
+        console.error('Error writing snippet file:', error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to write snippet file: ${error.message}`);
+        }
+        else {
+            throw new Error('Failed to write snippet file due to an unknown error');
+        }
+    }
 }
 
 
@@ -292,9 +317,15 @@ exports.getInput = getInput;
 const vscode = __importStar(__webpack_require__(1));
 async function getInput(prompt, errorMessage) {
     let input;
-    while (!input) {
-        input = await vscode.window.showInputBox({ prompt });
-        if (!input) {
+    while (true) {
+        input = await vscode.window.showInputBox({ prompt }) ?? null;
+        if (input === null) {
+            return null;
+        }
+        if (input) {
+            break;
+        }
+        else {
             vscode.window.showErrorMessage(errorMessage);
         }
     }
