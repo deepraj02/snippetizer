@@ -2,30 +2,52 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 
 export async function saveSnippet(filePath: string, name: string, description: string, alias: string, body: string) {
-    let snippets: any = {};
-
+    let fileContent = '{}';
     if (fs.existsSync(filePath)) {
         try {
-            const data = await fs.promises.readFile(filePath, 'utf8');
-            snippets = JSON.parse(data);
+            fileContent = await fs.promises.readFile(filePath, 'utf8');
+
+            JSON.parse(fileContent);
         } catch (error) {
-            console.error('Error parsing existing snippets file:', error);
-            vscode.window.showWarningMessage(`Existing snippets file was invalid. Creating a new file.`);
+            console.error('Error reading or parsing existing snippets file:', error);
+
+            fileContent = '{}';
         }
     }
 
-    snippets[name] = {
-        prefix: alias,
-        body: body.split('\n'),
-        description: description
-    };
+    // Remove the closing brace if it exists
+    fileContent = fileContent.trim().replace(/}$/, '');
 
-    await fs.promises.writeFile(filePath, JSON.stringify(snippets, null, 2));
+    // Add a comma if the file is not empty
+    if (fileContent.length > 1) {
+        fileContent += ',';
+    }
 
-    // Refresh snippets
-    await vscode.commands.executeCommand('vscode.refreshSnippets');
+    // Append the new snippet
+    const newSnippet = `
+  "${name}": {
+    "prefix": "${alias}",
+    "body": ${JSON.stringify(body.split('\n'))},
+    "description": "${description}"
+  }
+}`;
 
-    // Open the snippets file
-    const document = await vscode.workspace.openTextDocument(filePath);
-    await vscode.window.showTextDocument(document);
+    fileContent += newSnippet;
+
+    try {
+        await fs.promises.writeFile(filePath, fileContent);
+
+        // Open the snippets file
+        const document = await vscode.workspace.openTextDocument(filePath);
+        await vscode.window.showTextDocument(document);
+
+        vscode.window.showInformationMessage('Snippet added successfully!');
+    } catch (error) {
+        console.error('Error writing snippet file:', error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to write snippet file: ${error.message}`);
+        } else {
+            throw new Error('Failed to write snippet file due to an unknown error');
+        }
+    }
 }
