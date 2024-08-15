@@ -1,11 +1,15 @@
-import * as vscode from 'vscode'; 
+import * as vscode from 'vscode';
 
-
-export async function getInput(prompt: string, errorMessage: string): Promise<string> {
-    let input: string | undefined;
-    while (!input) {
-        input = await vscode.window.showInputBox({ prompt });
-        if (!input) {
+export async function getInput(prompt: string, errorMessage: string): Promise<string | null> {
+    let input: string | null;
+    while (true) {
+        input = await vscode.window.showInputBox({ prompt }) ?? null;
+        if (input === null) {
+            return null;
+        }
+        if (input) {
+            break;
+        } else {
             vscode.window.showErrorMessage(errorMessage);
         }
     }

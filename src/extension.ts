@@ -21,18 +21,21 @@ export function activate(context: vscode.ExtensionContext) {
 
 
     const snippetName = await getInput('Enter snippet name', 'Snippet name is required!');
-    const snippetDesc = await getInput('Enter snippet description', 'Snippet description is required!');
-    const snippetAlias = await getInput('Enter snippet alias (prefix)', 'Snippet alias is required!');
+    if (snippetName === null) { return; }
 
+    const snippetDesc = await getInput('Enter snippet description', 'Snippet description is required!');
+    if (snippetDesc === null) { return; }
+
+    const snippetAlias = await getInput('Enter snippet alias (prefix)', 'Snippet alias is required!');
+    if (snippetAlias === null) { return; }
 
     try {
       const selectedFile = await showSnippetFiles();
       if (selectedFile) {
         await saveSnippet(selectedFile, snippetName, snippetDesc, snippetAlias, text);
-        vscode.window.showInformationMessage('Snippet added successfully!');
       }
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to add snippet: ${(error as Error).message}`);
+      vscode.window.showErrorMessage(`Failed to add snippet:`);
       console.error('Error adding snippet:', error);
     }
   });
