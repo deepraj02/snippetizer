@@ -3,6 +3,7 @@
   "displayName": "Snippetizer",
   "description": "A VS Code extension that helps you add and manage large snippets with ease.",
   "version": "1.0.0",
+  "publisher": "DeeprajBaidya",
   "engines": {
     "vscode": "^1.91.0"
   },
