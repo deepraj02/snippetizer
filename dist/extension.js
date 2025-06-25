@@ -36,8 +36,9 @@ const constants_1 = __webpack_require__(2);
 const getInput_1 = __webpack_require__(3);
 const saveSnippet_1 = __webpack_require__(4);
 const showSnippetsFiles_1 = __webpack_require__(6);
+const viewSnippets_1 = __webpack_require__(10);
 function activate(context) {
-    const disposable = vscode.commands.registerCommand('snippetizer.createSnippet', async () => {
+    const createSnippetDisposable = vscode.commands.registerCommand(constants_1.COMMANDS.CREATE_SNIPPET, async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showErrorMessage(constants_1.MESSAGES.NO_ACTIVE_EDITOR);
@@ -88,7 +89,21 @@ function activate(context) {
             console.error('Error creating snippet:', error);
         }
     });
-    context.subscriptions.push(disposable);
+    const viewSnippetsDisposable = vscode.commands.registerCommand(constants_1.COMMANDS.VIEW_SNIPPETS, async () => {
+        try {
+            const selectedFile = await (0, viewSnippets_1.showSnippetFilesForViewing)();
+            if (!selectedFile) {
+                return;
+            }
+            await (0, viewSnippets_1.displaySnippets)(selectedFile);
+        }
+        catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            vscode.window.showErrorMessage(constants_1.MESSAGES.ERROR_READING_SNIPPETS(errorMessage));
+            console.error('Error viewing snippets:', error);
+        }
+    });
+    context.subscriptions.push(createSnippetDisposable, viewSnippetsDisposable);
 }
 function deactivate() { }
 
@@ -105,7 +120,7 @@ module.exports = require("vscode");
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.UI = exports.VALIDATION = exports.PLACEHOLDERS = exports.PROMPTS = exports.MESSAGES = void 0;
+exports.COMMANDS = exports.UI = exports.VALIDATION = exports.PLACEHOLDERS = exports.PROMPTS = exports.MESSAGES = void 0;
 exports.MESSAGES = {
     NO_ACTIVE_EDITOR: 'No active editor found!',
     NO_TEXT_SELECTED: 'No text selected! Please select some code to create a snippet.',
@@ -114,18 +129,25 @@ exports.MESSAGES = {
     SNIPPET_SAVED_SUCCESS: (name) => `Snippet "${name}" saved successfully!`,
     SNIPPET_CREATE_FAILED: (error) => `Failed to create snippet: ${error}`,
     ERROR_ACCESSING_FILES: (error) => `Error accessing snippet files: ${error}`,
+    NO_SNIPPETS_FOUND: 'No snippets found in the selected file.',
+    NO_SNIPPET_FILES_FOUND: 'No snippet files found in the snippets directory.',
+    ERROR_READING_SNIPPETS: (error) => `Error reading snippets: ${error}`,
+    SNIPPET_INSERTED_SUCCESS: (name) => `Snippet "${name}" inserted successfully!`,
 };
 exports.PROMPTS = {
     SNIPPET_NAME: 'Enter snippet name',
     SNIPPET_DESCRIPTION: 'Enter snippet description (optional)',
     SNIPPET_ALIAS: 'Enter snippet alias (prefix)',
-    NEW_FILE_NAME: 'Enter the name for the new snippets file',
+    NEW_FILE_NAME: 'Enter the name for the new snippets file (codefile extension as name) without any extension',
 };
 exports.PLACEHOLDERS = {
     SNIPPET_DESCRIPTION: 'Brief description of what this snippet does',
     FILE_NAME: 'e.g., javascript, typescript, my-snippets',
     SELECT_FILE_EMPTY: 'No snippet files found. Create a new one?',
     SELECT_FILE: 'Select a snippet file or create a new one',
+    SELECT_FILE_TO_VIEW: 'Select a snippet file to view its contents',
+    SELECT_SNIPPET_TO_VIEW: 'Select a snippet to view its details',
+    SELECT_SNIPPET_ACTION: 'What would you like to do with this snippet?',
 };
 exports.VALIDATION = {
     SNIPPET_NAME_PATTERN: /^[a-zA-Z0-9_\s-]+$/,
@@ -139,6 +161,12 @@ exports.VALIDATION = {
 exports.UI = {
     CREATE_NEW_FILE: 'Create new snippets file',
     SEPARATOR: '---',
+    VIEW_SNIPPET: '👁️ View Snippet',
+    INSERT_SNIPPET: '📝 Insert into Editor',
+};
+exports.COMMANDS = {
+    CREATE_SNIPPET: 'snippetizer.createSnippet',
+    VIEW_SNIPPETS: 'snippetizer.viewSnippets'
 };
 
 
@@ -438,6 +466,185 @@ function getUserSnippetsFolder() {
 /***/ ((module) => {
 
 module.exports = require("os");
+
+/***/ }),
+/* 10 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.showSnippetFilesForViewing = showSnippetFilesForViewing;
+exports.displaySnippets = displaySnippets;
+const fs = __importStar(__webpack_require__(5));
+const path = __importStar(__webpack_require__(7));
+const vscode = __importStar(__webpack_require__(1));
+const constants_1 = __webpack_require__(2);
+const getSnippetsFolder_1 = __webpack_require__(8);
+/**
+ * Shows a quick pick for selecting existing snippet files to view
+ * @returns The absolute path to the selected snippet file, or empty string if cancelled
+ * @throws {Error} If there's an error accessing the snippets folder
+ */
+async function showSnippetFilesForViewing() {
+    const snippetsFolder = (0, getSnippetsFolder_1.getUserSnippetsFolder)();
+    try {
+        await fs.promises.mkdir(snippetsFolder, { recursive: true });
+        const files = await fs.promises.readdir(snippetsFolder);
+        const jsonFiles = files.filter(file => file.endsWith('.json'));
+        if (jsonFiles.length === 0) {
+            vscode.window.showInformationMessage(constants_1.MESSAGES.NO_SNIPPET_FILES_FOUND);
+            return '';
+        }
+        const selectedFile = await vscode.window.showQuickPick(jsonFiles, {
+            placeHolder: constants_1.PLACEHOLDERS.SELECT_FILE_TO_VIEW
+        });
+        if (!selectedFile) {
+            return '';
+        }
+        return path.join(snippetsFolder, selectedFile);
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        vscode.window.showErrorMessage(constants_1.MESSAGES.ERROR_ACCESSING_FILES(errorMessage));
+        throw error;
+    }
+}
+/**
+ * Reads snippets from a file and displays them in a quick pick list
+ * @param filePath - Absolute path to the snippets file
+ * @throws {Error} If the file cannot be read or parsed
+ */
+async function displaySnippets(filePath) {
+    try {
+        if (!fs.existsSync(filePath)) {
+            vscode.window.showErrorMessage(constants_1.MESSAGES.NO_SNIPPETS_FOUND);
+            return;
+        }
+        const fileContent = await fs.promises.readFile(filePath, 'utf8');
+        const snippets = JSON.parse(fileContent);
+        const snippetNames = Object.keys(snippets);
+        if (snippetNames.length === 0) {
+            vscode.window.showInformationMessage(constants_1.MESSAGES.NO_SNIPPETS_FOUND);
+            return;
+        }
+        const quickPickItems = snippetNames.map(name => {
+            const snippet = snippets[name];
+            return {
+                label: name,
+                description: snippet.description || 'No description',
+                detail: `Alias: ${snippet.prefix} | Lines: ${snippet.body.length}`,
+                snippet: snippet
+            };
+        });
+        const selectedItem = await vscode.window.showQuickPick(quickPickItems, {
+            placeHolder: constants_1.PLACEHOLDERS.SELECT_SNIPPET_TO_VIEW,
+            matchOnDescription: true,
+            matchOnDetail: true
+        });
+        if (selectedItem) {
+            await showSnippetAction(selectedItem.label, selectedItem.snippet, filePath);
+        }
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        vscode.window.showErrorMessage(constants_1.MESSAGES.ERROR_READING_SNIPPETS(errorMessage));
+        console.error('Error reading snippets:', error);
+    }
+}
+/**
+ * Shows action options for a selected snippet (view or insert)
+ * @param name - The name of the snippet
+ * @param snippet - The snippet object containing its details
+ * @param filePath - The path to the snippet file
+ */
+async function showSnippetAction(name, snippet, filePath) {
+    const actions = [
+        {
+            label: constants_1.UI.VIEW_SNIPPET,
+            description: 'View snippet content in a new tab'
+        },
+        {
+            label: constants_1.UI.INSERT_SNIPPET,
+            description: 'Insert snippet at cursor position in active editor'
+        }
+    ];
+    const selectedAction = await vscode.window.showQuickPick(actions, {
+        placeHolder: constants_1.PLACEHOLDERS.SELECT_SNIPPET_ACTION
+    });
+    if (!selectedAction) {
+        return;
+    }
+    if (selectedAction.label === constants_1.UI.VIEW_SNIPPET) {
+        await showSnippetDetails(name, snippet, filePath);
+    }
+    else if (selectedAction.label === constants_1.UI.INSERT_SNIPPET) {
+        await insertSnippetIntoEditor(name, snippet);
+    }
+}
+/**
+ * Inserts a snippet into the active editor at the cursor position
+ * @param name - The name of the snippet
+ * @param snippet - The snippet object containing its details
+ */
+async function insertSnippetIntoEditor(name, snippet) {
+    const activeEditor = vscode.window.activeTextEditor;
+    if (!activeEditor) {
+        vscode.window.showErrorMessage(constants_1.MESSAGES.NO_ACTIVE_EDITOR);
+        return;
+    }
+    const snippetContent = snippet.body.join('\n');
+    const position = activeEditor.selection.active;
+    try {
+        await activeEditor.edit(editBuilder => {
+            editBuilder.insert(position, snippetContent);
+        });
+        vscode.window.showInformationMessage(constants_1.MESSAGES.SNIPPET_INSERTED_SUCCESS(name));
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        vscode.window.showErrorMessage(`Failed to insert snippet: ${errorMessage}`);
+    }
+}
+/**
+ * Shows detailed information about a selected snippet by opening the snippet file
+ * @param name - The name of the snippet
+ * @param snippet - The snippet object containing its details
+ * @param filePath - The path to the snippet file
+ */
+async function showSnippetDetails(name, snippet, filePath) {
+    try {
+        const document = await vscode.workspace.openTextDocument(filePath);
+        await vscode.window.showTextDocument(document, { preview: false });
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        vscode.window.showErrorMessage(`Failed to open snippet file: ${errorMessage}`);
+    }
+}
+
 
 /***/ })
 /******/ 	]);

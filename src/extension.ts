@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
-import { MESSAGES, PLACEHOLDERS, PROMPTS, VALIDATION } from './constants/constants';
+import { COMMANDS, MESSAGES, PLACEHOLDERS, PROMPTS, VALIDATION } from './constants/constants';
 import { getInput } from './helpers/getInput';
 import { saveSnippet } from './helpers/saveSnippet';
 import { showSnippetFiles } from './helpers/showSnippetsFiles';
+import { displaySnippets, showSnippetFilesForViewing } from './helpers/viewSnippets';
 
 export function activate(context: vscode.ExtensionContext) {
-  const disposable = vscode.commands.registerCommand('snippetizer.createSnippet', async () => {
+  const createSnippetDisposable = vscode.commands.registerCommand(COMMANDS.CREATE_SNIPPET, async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
       vscode.window.showErrorMessage(MESSAGES.NO_ACTIVE_EDITOR);
@@ -66,7 +67,22 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  context.subscriptions.push(disposable);
+  const viewSnippetsDisposable = vscode.commands.registerCommand(COMMANDS.VIEW_SNIPPETS, async () => {
+    try {
+      const selectedFile = await showSnippetFilesForViewing();
+      if (!selectedFile) {
+        return;
+      }
+
+      await displaySnippets(selectedFile);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      vscode.window.showErrorMessage(MESSAGES.ERROR_READING_SNIPPETS(errorMessage));
+      console.error('Error viewing snippets:', error);
+    }
+  });
+
+  context.subscriptions.push(createSnippetDisposable, viewSnippetsDisposable);
 }
 
 export function deactivate() { }
