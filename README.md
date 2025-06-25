@@ -32,9 +32,20 @@ Snippetizer addresses these challenges through a streamlined workflow:
 
 ## Demonstration
 
-![Demo GIF](assets/snippetizer1.gif)
+### Adding Snippets
 
-![Demo GIF](assets/snippetizer2.gif)
+<div style="display: flex; justify-content: space-between">
+  <img src="assets/snippetizer1.gif" alt="Demo GIF 1" width="49%">
+  <img src="assets/snippetizer2.gif" alt="Demo GIF 2" width="49%">
+</div>
+
+### Viewing Snippets
+<div align="center">
+  <img src="assets/snippetizer3.gif" alt="Viewing Snippets Demo" width="80%">
+</div>
+
+<p align="center"><em>Using the "View Snippets" command to browse available snippets</em></p>
+
 
 ## Usage
 
@@ -57,7 +68,11 @@ Configure a custom keybinding in `keybindings.json`:
 {
   "key": "ctrl+shift+s",
   "command": "snippetizer.createSnippet",
-  "when": "editorHasSelection"
+  "when": "editorHasSelection",
+
+  "key": "ctrl+shift+v",
+  "command": "snippetizer.veiwSnippets"
+
 }
 ```
 

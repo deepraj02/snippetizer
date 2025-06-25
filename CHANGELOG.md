@@ -2,6 +2,12 @@
 
 All notable changes to the "snippetizer" extension will be documented in this file.
 
+## [1.2.0] - 2025-06-26
+
+### Added
+- `Snippetizer: View Snippets` - Users can now view and search the snippets they've created.
+- Insert Snippets directly while searching them via the `Snippetizer: View Snippets` command.
+
 
 ## [1.1.0] - 2025-06-25
 
