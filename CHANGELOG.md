@@ -3,6 +3,14 @@
 All notable changes to the "snippetizer" extension will be documented in this file.
 
 
+## [1.1.0] - 2025-06-25
+
+### Added
+- Fixed the bug which would automatically open the <snippet>.json file after saving the snippet.
+- `description` field in the Snippet saving process is now optional and users won't be forced to enter details for that.
+- Added feature to `create` and save snippets in custom snippet file (if it doesn't exists). 
+
+
 ## [1.0.0] - 2024-08-16
 
 ### Added
